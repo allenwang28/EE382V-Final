@@ -164,7 +164,10 @@ def generate_model(opt):
                 sample_size=opt.sample_size,
                 sample_duration=opt.sample_duration)
 
+    print ("Model made, final options in generate_model in model.py")
+
     if not opt.no_cuda:
+        print ("Cuda model")
         model = model.cuda()
         model = nn.DataParallel(model, device_ids=None)
 
@@ -187,6 +190,7 @@ def generate_model(opt):
             parameters = get_fine_tuning_parameters(model, opt.ft_begin_index)
             return model, parameters
     else:
+        print ("Not cuda model")
         if opt.pretrain_path:
             print('loading pretrained model {}'.format(opt.pretrain_path))
             pretrain = torch.load(opt.pretrain_path)

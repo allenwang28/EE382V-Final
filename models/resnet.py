@@ -142,11 +142,14 @@ class ResNet(nn.Module):
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         print ("Module for loop")
+        print (len(self.modules())
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
+                print ("3D Conv")
                 m.weight = nn.init.kaiming_normal_(m.weight, mode='fan_out')
             elif isinstance(m, nn.BatchNorm3d):
+                print ("3D BatchNorm")
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
