@@ -8,9 +8,12 @@ def generate_model(opt):
     assert opt.model in [
         'resnet', 'preresnet', 'wideresnet', 'resnext', 'densenet'
     ]
+    print ("Generating model")
 
     if opt.model == 'resnet':
         assert opt.model_depth in [10, 18, 34, 50, 101, 152, 200]
+
+        print ("ResNet-{0} selected".format(opt.model_depth))
 
         from models.resnet import get_fine_tuning_parameters
 

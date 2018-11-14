@@ -115,6 +115,7 @@ class ResNet(nn.Module):
                  sample_duration,
                  shortcut_type='B',
                  num_classes=400):
+        print ("Initializing ResNet model")
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv3d(
@@ -140,14 +141,17 @@ class ResNet(nn.Module):
             (last_duration, last_size, last_size), stride=1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
+        print ("Module for loop")
+
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                m.weight = nn.init.kaiming_normal(m.weight, mode='fan_out')
+                m.weight = nn.init.kaiming_normal_(m.weight, mode='fan_out')
             elif isinstance(m, nn.BatchNorm3d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
     def _make_layer(self, block, planes, blocks, shortcut_type, stride=1):
+        print ("Making layer")
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             if shortcut_type == 'A':
@@ -215,6 +219,7 @@ def get_fine_tuning_parameters(model, ft_begin_index):
 def resnet10(**kwargs):
     """Constructs a ResNet-18 model.
     """
+    print ("Getting ResNet10")
     model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
     return model
 
