@@ -142,7 +142,6 @@ class ResNet(nn.Module):
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         print ("Module for loop")
-        print (len(self.modules())
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):

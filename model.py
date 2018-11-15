@@ -189,6 +189,8 @@ def generate_model(opt):
 
             parameters = get_fine_tuning_parameters(model, opt.ft_begin_index)
             return model, parameters
+        else:
+            print ("Not loading pretrained model")
     else:
         print ("Not cuda model")
         if opt.pretrain_path:
@@ -208,4 +210,5 @@ def generate_model(opt):
             parameters = get_fine_tuning_parameters(model, opt.ft_begin_index)
             return model, parameters
 
+    print ("Exiting generate_model")
     return model, model.parameters()
