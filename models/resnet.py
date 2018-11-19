@@ -219,7 +219,7 @@ def get_fine_tuning_parameters(model, ft_begin_index):
 
 
 def resnet10(**kwargs):
-    """Constructs a ResNet-18 model.
+    """Constructs a ResNet-10 model.
     """
     print ("Getting ResNet10")
     model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
