@@ -6,8 +6,22 @@ import math
 import functools
 import json
 import copy
+import librosa
 
 from utils import load_value_file
+
+def librosa_loader(path, resample=None, trunc=3.5):
+    s, sr = librosa.core.load(path)
+
+    # truncate the signal
+    if trunc:
+        s = s[:int(sr*trunc)]
+
+    # resample the signal
+    if sr:
+        return librosa.core.resample(signal, sr, resample)
+    else:
+        return signal
 
 
 def pil_loader(path):
@@ -33,22 +47,39 @@ def get_default_image_loader():
     else:
         return pil_loader
 
+def get_default_audio_loader():
+    return librosa_loader
 
-def video_loader(video_dir_path, frame_indices, image_loader):
-    video = []
+
+def video_loader(video_dir_path, frame_indices, image_loader, audio_loader):
+    imgs = []
+    flow_x = []
+    flow_y = []
+    audio_path = os.path.join(video_dir_path, os.path.basename(video_dir_path + '.wav'))
+    
+    if not os.path.exists(audio_path):
+        return []
+    audio = audio_loader(audio_path)
+    
     for i in frame_indices:
         image_path = os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
-        if os.path.exists(image_path):
-            video.append(image_loader(image_path))
-        else:
-            return video
+        flow_x_path = os.path.join(video_dir_path, 'flow_x_{:05d}.jpg'.format(i))
+        flow_y_path = os.path.join(video_dir_path, 'flow_y_{:05d}.jpg'.format(i))
 
-    return video
+        if os.path.exists(image_path) and os.path.exists(flow_x_path) and os.path.exists(flow_y_path):
+            imgs.append(image_loader(image_path))
+            flow_x.append(image_loader(flow_x_path))
+            flow_y.append(image_loader(flow_y_path))
+        else:
+            return imgs, flow_x, flow_y, audio 
+
+    return imgs, flow_x, flow_y, audio 
 
 
 def get_default_video_loader():
     image_loader = get_default_image_loader()
-    return functools.partial(video_loader, image_loader=image_loader)
+    audio_loader = get_default_audio_loader()
+    return functools.partial(video_loader, image_loader=image_loader, audio_loader=audio_loader)
 
 
 def load_annotation_data(data_file_path):
