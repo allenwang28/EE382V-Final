@@ -53,27 +53,18 @@ def get_default_audio_loader():
 
 def video_loader(video_dir_path, frame_indices, image_loader, audio_loader):
     imgs = []
-    flow_x = []
-    flow_y = []
     audio_path = os.path.join(video_dir_path, os.path.basename(video_dir_path + '.wav'))
-    
-    if not os.path.exists(audio_path):
-        return []
     audio = audio_loader(audio_path)
     
     for i in frame_indices:
         image_path = os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
-        flow_x_path = os.path.join(video_dir_path, 'flow_x_{:05d}.jpg'.format(i))
-        flow_y_path = os.path.join(video_dir_path, 'flow_y_{:05d}.jpg'.format(i))
 
         if os.path.exists(image_path) and os.path.exists(flow_x_path) and os.path.exists(flow_y_path):
             imgs.append(image_loader(image_path))
-            flow_x.append(image_loader(flow_x_path))
-            flow_y.append(image_loader(flow_y_path))
         else:
-            return imgs, flow_x, flow_y, audio 
+            return imgs, audio 
 
-    return imgs, flow_x, flow_y, audio 
+    return imgs, audio 
 
 
 def get_default_video_loader():
@@ -126,6 +117,10 @@ def make_dataset(root_path, annotation_path, subset, n_samples_for_each_video,
 
         video_path = os.path.join(root_path, video_names[i])
         if not os.path.exists(video_path):
+            continue
+
+        audio_path = os.path.join(video_path, os.path.basename(video_dir_path + '.wav'))
+        if not os.path.exists(audio_path):
             continue
 
         n_frames_file_path = os.path.join(video_path, 'n_frames')
@@ -181,7 +176,6 @@ class UCF101(data.Dataset):
         class_to_idx (dict): Dict with items (class_name, class_index).
         imgs (list): List of (image path, class_index) tuples
     """
-
     def __init__(self,
                  root_path,
                  annotation_path,
@@ -213,7 +207,7 @@ class UCF101(data.Dataset):
         frame_indices = self.data[index]['frame_indices']
         if self.temporal_transform is not None:
             frame_indices = self.temporal_transform(frame_indices)
-        clip = self.loader(path, frame_indices)
+        clip, audio = self.loader(path, frame_indices)
         if self.spatial_transform is not None:
             self.spatial_transform.randomize_parameters()
             clip = [self.spatial_transform(img) for img in clip]
@@ -223,7 +217,7 @@ class UCF101(data.Dataset):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return clip, target
+        return clip, audio, target
 
     def __len__(self):
         return len(self.data)
