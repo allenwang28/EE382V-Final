@@ -48,7 +48,7 @@ class Basic3DResNetBlock(nn.Module):
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
+        super(Basic3DResNetBlock, self).__init__()
         self.conv1 = conv3x3x3(inplanes, planes, stride)
         self.bn1 = nn.BatchNorm3d(planes)
         self.relu = nn.ReLU(inplace=True)
@@ -110,7 +110,7 @@ class Basic3DBlock(nn.Module):
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
+        super(Basic3DBlock, self).__init__()
         self.conv1 = conv3x3x3(inplanes, planes, stride)
         self.bn1 = nn.BatchNorm3d(planes)
         self.relu = nn.ReLU(inplace=True)
@@ -134,7 +134,7 @@ class Basic2DBlock(nn.Module):
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
+        super(Basic2DBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
@@ -233,7 +233,16 @@ class Bottleneck3D(nn.Module):
 
 
 class MultiModal(nn.Module):
-    def __init__(self, visual_block, audio_block, layers, num_classes=101, video_pretrained=None):
+    def __init__(self, 
+                 visual_block, 
+                 audio_block,
+                 visual_layers, 
+                 audio_layers,
+                 sample_size,
+                 sample_duration,
+                 shortcut_type='B',
+                 num_classes=101, 
+                 video_pretrained=None):
         super(MultiModal, self).__init__()
         self.inplanes = 64
 
@@ -248,13 +257,13 @@ class MultiModal(nn.Module):
         self.v_bn1 = nn.BatchNorm3d(64)
         self.v_relu = nn.ReLU(inplace=True)
         self.v_maxpool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=2, padding=1)
-        self.v_layer1 = self._make_layer(visual_block, 64, layers[0], shortcut_type)
+        self.v_layer1 = self._make_layer(visual_block, 64, visual_layers[0], shortcut_type)
         self.v_layer2 = self._make_layer(
-            visual_block, 128, layers[1], shortcut_type, stride=2)
+            visual_block, 128, visual_layers[1], shortcut_type, stride=2)
         self.v_layer3 = self._make_layer(
-            visual_block, 256, layers[2], shortcut_type, stride=2)
+            visual_block, 256, visual_layers[2], shortcut_type, stride=2)
         self.v_layer4 = self._make_layer(
-            visual_block, 512, layers[3], shortcut_type, stride=2)
+            visual_block, 512, visual_layers[3], shortcut_type, stride=2)
         last_duration = int(math.ceil(sample_duration / 16))
         last_size = int(math.ceil(sample_size / 32))
         self.v_avgpool = nn.AvgPool3d(
@@ -270,14 +279,14 @@ class MultiModal(nn.Module):
         self.a_bn1 = nn.BatchNorm2d(64)
         self.a_relu = nn.ReLU(inplace=True)
         self.a_maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.a_layer1 = self._make_layer(block, 64, layers[0])
-        self.a_layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.a_layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.a_layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.a_layer1 = self._make_layer(audio_block, 64, audio_layers[0], shortcut_type)
+        self.a_layer2 = self._make_layer(audio_block, 128, audio_layers[1], shortcut_type, stride=2)
+        self.a_layer3 = self._make_layer(audio_block, 256, audio_layers[2], shortcut_type, stride=2)
+        self.a_layer4 = self._make_layer(audio_block, 512, audio_layers[3], shortcut_type, stride=2)
         self.a_avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         # TODO - check this 
-        self.fc = nn.Linear(512 * (video_block.expansion + audio_block.expansion), num_classes)
+        self.fc = nn.Linear(512 * (visual_block.expansion + audio_block.expansion), num_classes)
 
         # Initializations
         for m in self.modules():
@@ -287,7 +296,7 @@ class MultiModal(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1):
+    def _make_layer(self, block, planes, blocks, shortcut_type, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
@@ -333,6 +342,11 @@ class MultiModal(nn.Module):
         # TODO figure out how to actually concatenate these 
         x = self.fc(video_x + audio_x)
         return x
+
+def simple10(**kwargs):
+    model = MultiModal(Basic3DBlock, Basic2DBlock, [1,1,1,1], [1,1,1,1], **kwargs)
+    return model
+
 
 def multimodal_rr_18(pretrained=False, **kwargs):
     """Constructs a MultiModal-18 model.

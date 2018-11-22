@@ -18,8 +18,10 @@ def class_process(dir_path, dst_dir_path, class_name):
 
         dst_path = os.path.join(dst_class_path, name, name + ext)
 
+        file_name = os.path.join(class_path, file_name)
+
         print ("Copying {0} to {1}".format(file_name, dst_path))
-        # shutil.copy2(file_name, dst_path)
+        shutil.copy2(file_name, dst_path)
                 
 
 if __name__ == "__main__":

@@ -44,6 +44,8 @@ if __name__ == '__main__':
 
     torch.manual_seed(opt.manual_seed)
 
+    print ("Generating model")
+
     model, parameters = generate_model(opt)
     print(model)
     criterion = nn.CrossEntropyLoss()
@@ -73,6 +75,7 @@ if __name__ == '__main__':
         ])
         temporal_transform = TemporalRandomCrop(opt.sample_duration)
         target_transform = ClassLabel()
+        print ("Getting the training set")
         training_data = get_training_set(opt, spatial_transform,
                                          temporal_transform, target_transform)
         train_loader = torch.utils.data.DataLoader(

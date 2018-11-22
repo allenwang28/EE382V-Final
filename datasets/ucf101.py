@@ -18,10 +18,10 @@ def librosa_loader(path, resample=None, trunc=3.5):
         s = s[:int(sr*trunc)]
 
     # resample the signal
-    if sr:
-        return librosa.core.resample(signal, sr, resample)
+    if resample:
+        return librosa.core.resample(s, sr, resample)
     else:
-        return signal
+        return s 
 
 
 def pil_loader(path):
@@ -59,7 +59,7 @@ def video_loader(video_dir_path, frame_indices, image_loader, audio_loader):
     for i in frame_indices:
         image_path = os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
 
-        if os.path.exists(image_path) and os.path.exists(flow_x_path) and os.path.exists(flow_y_path):
+        if os.path.exists(image_path):
             imgs.append(image_loader(image_path))
         else:
             return imgs, audio 
@@ -119,7 +119,7 @@ def make_dataset(root_path, annotation_path, subset, n_samples_for_each_video,
         if not os.path.exists(video_path):
             continue
 
-        audio_path = os.path.join(video_path, os.path.basename(video_dir_path + '.wav'))
+        audio_path = os.path.join(video_path, os.path.basename(video_path + '.wav'))
         if not os.path.exists(audio_path):
             continue
 
@@ -151,7 +151,7 @@ def make_dataset(root_path, annotation_path, subset, n_samples_for_each_video,
                                      (n_samples_for_each_video - 1)))
             else:
                 step = sample_duration
-            for j in range(1, n_frames, step):
+            for j in range(1, n_frames, int(step)):
                 sample_j = copy.deepcopy(sample)
                 sample_j['frame_indices'] = list(
                     range(j, min(n_frames + 1, j + sample_duration)))
@@ -212,6 +212,7 @@ class UCF101(data.Dataset):
             self.spatial_transform.randomize_parameters()
             clip = [self.spatial_transform(img) for img in clip]
         clip = torch.stack(clip, 0).permute(1, 0, 2, 3)
+        audio = torch.FloatTensor(audio)
 
         target = self.data[index]
         if self.target_transform is not None:
@@ -221,20 +222,3 @@ class UCF101(data.Dataset):
 
     def __len__(self):
         return len(self.data)
-
-if __name__ == "__main__":
-    training_data = UCF101(
-        '~/data/ucf101_processed',
-        '~/data/ucf101_annotations/ucf101_01.json',
-        'training',
-        spatial_transform=None,
-        temporal_transform=None,
-        target_transform=None)
-
-     clip, audio, target = training_data[0]
-     print (clip)
-     print (audio)
-     print (target)
-
-    
-

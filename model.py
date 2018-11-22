@@ -1,16 +1,32 @@
 import torch
 from torch import nn
 
-from models import resnet, pre_act_resnet, wide_resnet, resnext, densenet
+from models import multimodal, resnet, pre_act_resnet, wide_resnet, resnext, densenet
 
 
 def generate_model(opt):
     assert opt.model in [
-        'resnet', 'preresnet', 'wideresnet', 'resnext', 'densenet'
+        'multimodal', 'resnet', 'preresnet', 'wideresnet', 'resnext', 'densenet'
     ]
     print ("Generating model")
 
-    if opt.model == 'resnet':
+    if opt.model == 'multimodal':
+        model = multimodal.simple10(
+                num_classes=opt.n_classes,
+                shortcut_type=opt.resnet_shortcut,
+                sample_size=opt.sample_size,
+                sample_duration=opt.sample_duration)
+        """
+        assert opt.model_depth in [10, 18, 34, 50, 101, 152, 200]
+
+        print ("MultiModal-{0} selected".format(opt.model_depth))
+
+        if opt.model_depth == 10:
+            model = multimodal.
+        """
+
+
+    elif opt.model == 'resnet':
         assert opt.model_depth in [10, 18, 34, 50, 101, 152, 200]
 
         print ("ResNet-{0} selected".format(opt.model_depth))
