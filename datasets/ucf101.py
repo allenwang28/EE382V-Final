@@ -221,3 +221,20 @@ class UCF101(data.Dataset):
 
     def __len__(self):
         return len(self.data)
+
+if __name__ == "__main__":
+    training_data = UCF101(
+        '~/data/ucf101_processed',
+        '~/data/ucf101_annotations/ucf101_01.json',
+        'training',
+        spatial_transform=None,
+        temporal_transform=None,
+        target_transform=None)
+
+     clip, audio, target = training_data[0]
+     print (clip)
+     print (audio)
+     print (target)
+
+    
+

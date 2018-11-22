@@ -38,7 +38,6 @@ if __name__ == '__main__':
     opt.arch = '{}-{}'.format(opt.model, opt.model_depth)
     opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
     opt.std = get_std(opt.norm_value)
-    """
     print(opt)
     with open(os.path.join(opt.result_path, 'opts.json'), 'w') as opt_file:
         json.dump(vars(opt), opt_file)
@@ -58,7 +57,6 @@ if __name__ == '__main__':
     else:
         norm_method = Normalize(opt.mean, opt.std)
 
-    """
     if not opt.no_train:
         assert opt.train_crop in ['random', 'corner', 'center']
         if opt.train_crop == 'random':
@@ -77,7 +75,6 @@ if __name__ == '__main__':
         target_transform = ClassLabel()
         training_data = get_training_set(opt, spatial_transform,
                                          temporal_transform, target_transform)
-        """
         train_loader = torch.utils.data.DataLoader(
             training_data,
             batch_size=opt.batch_size,
@@ -163,5 +160,3 @@ if __name__ == '__main__':
             num_workers=opt.n_threads,
             pin_memory=True)
         test.test(test_loader, model, opt, test_data.class_names)
-    """
-
