@@ -19,8 +19,8 @@ from target_transforms import Compose as TargetCompose
 from dataset import get_training_set, get_validation_set, get_test_set
 from utils import Logger
 from train_multimodal import train_epoch
-from validation import val_epoch
-import test
+from validation_multimodal import val_epoch
+import test_multimodal
 
 if __name__ == '__main__':
     opt = parse_opts()

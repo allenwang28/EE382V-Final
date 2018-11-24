@@ -1,17 +1,15 @@
 import torch
 from torch.autograd import Variable
 import time
-import os
 import sys
 
 from utils import AverageMeter, calculate_accuracy
 
 
-def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
-                epoch_logger, batch_logger):
-    print('train at epoch {}'.format(epoch))
+def val_epoch(epoch, data_loader, model, criterion, opt, logger):
+    print('validation at epoch {}'.format(epoch))
 
-    model.train()
+    model.eval()
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -24,10 +22,10 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
 
         if not opt.no_cuda:
             targets = targets.cuda(async=True)
-        video_inputs = Variable(video_inputs)
-        audio_inputs = Variable(audio_inputs)
+        video_inputs = Variable(video_inputs, volatile=True)
+        audio_inputs = Variable(audio_inputs, volatile=True)
 
-        targets = Variable(targets)
+        targets = Variable(targets, volatile=True)
         outputs = model(video_inputs, audio_inputs)
         loss = criterion(outputs, targets)
         acc = calculate_accuracy(outputs, targets)
@@ -35,21 +33,8 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
         losses.update(loss.data[0], video_inputs.size(0) + audio_inputs.size(0))
         accuracies.update(acc, video_inputs.size(0) + audio_inputs.size(0))
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
         batch_time.update(time.time() - end_time)
         end_time = time.time()
-
-        batch_logger.log({
-            'epoch': epoch,
-            'batch': i + 1,
-            'iter': (epoch - 1) * len(data_loader) + (i + 1),
-            'loss': losses.val,
-            'acc': accuracies.val,
-            'lr': optimizer.param_groups[0]['lr']
-        })
 
         print('Epoch: [{0}][{1}/{2}]\t'
               'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
@@ -64,20 +49,6 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
                   loss=losses,
                   acc=accuracies))
 
-    epoch_logger.log({
-        'epoch': epoch,
-        'loss': losses.avg,
-        'acc': accuracies.avg,
-        'lr': optimizer.param_groups[0]['lr']
-    })
+    logger.log({'epoch': epoch, 'loss': losses.avg, 'acc': accuracies.avg})
 
-    if epoch % opt.checkpoint == 0:
-        save_file_path = os.path.join(opt.result_path,
-                                      'save_{}.pth'.format(epoch))
-        states = {
-            'epoch': epoch + 1,
-            'arch': opt.arch,
-            'state_dict': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-        }
-        torch.save(states, save_file_path)
+    return losses.avg

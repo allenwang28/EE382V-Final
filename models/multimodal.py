@@ -34,7 +34,7 @@ def conv3x3x3(in_planes, out_planes, stride=1):
         padding=1,
         bias=False)
 
-def downsample_basic_block(x, planes, stride):
+def downsample_basic_3d_block(x, planes, stride):
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
     zero_pads = torch.Tensor(
         out.size(0), planes - out.size(1), out.size(2), out.size(3),
@@ -45,6 +45,18 @@ def downsample_basic_block(x, planes, stride):
     out = Variable(torch.cat([out.data, zero_pads], dim=1))
 
     return out
+
+def downsample_basic_1d_block(x, planes, stride):
+    out = F.avg_pool1d(x, kernel_size=1, stride=stride)
+    zero_pads = torch.Tensor(
+        out.size(0), planes - out.size(1)).zero_()
+    if isinstance(out.data, torch.cuda.FloatTensor):
+        zero_pads = zero_pads.cuda()
+
+    out = Variable(torch.cat([out.data, zero_pads], dim=1))
+
+    return out
+
 
 class Basic3DResNetBlock(nn.Module):
     expansion = 1
@@ -92,6 +104,7 @@ class Basic2DResNetBlock(nn.Module):
         self.stride = stride
 
     def forward(self, x):
+        residual = x
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
@@ -121,6 +134,7 @@ class Basic1DResNetBlock(nn.Module):
         self.stride = stride
 
     def forward(self, x):
+        residual = x
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
@@ -324,9 +338,8 @@ class MultiModal(nn.Module):
         self.v_avgpool = nn.AvgPool3d(
             (last_duration, last_size, last_size), stride=1)
 
-        # TODO - figure out how to load the weights 
         if video_pretrained:
-            pass
+            self._load_v_weights(video_pretrained)
 
         self.inplanes = 64
 
@@ -347,20 +360,53 @@ class MultiModal(nn.Module):
 
         # Initializations
         for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d):
+            if isinstance(m, nn.Conv1d) or isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d):
+            elif isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
+
+    def _load_v_weights(self, v_weights_path):
+        # TODO - test this for other models, not just ResNet-18
+        import itertools
+        print ("Loading pretrained weights for visual layers")
+
+        v_layers = [self.v_conv1, self.v_bn1] + \
+            list(itertools.chain.from_iterable([[l.conv1, l.bn1, l.conv2, l.bn2] for ll in (self.v_layer1, self.v_layer2, self.v_layer3, self.v_layer4) for l in ll]))
+
+        state_dict = torch.load(v_weights_path)['state_dict'].values()
+
+        wi = 0
+
+        for i, l in enumerate(v_layers):
+            if isinstance(l, nn.Conv3d):
+                l.weight.data = state_dict[wi]
+                wi += 1
+            elif isinstance(l, nn.BatchNorm3d):
+                l.weight.data = state_dict[wi]
+                l.bias.data = state_dict[wi + 1]
+                l.running_mean.data = state_dict[wi + 2]
+                l.running_var.data = state_dict[wi + 3]
+                wi += 4
+        assert (len(state_dict) - wi == 2) # Not loading fc layer
+
 
     def _make_visual_layer(self, block, planes, blocks, shortcut_type, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                conv1x1(self.inplanes, planes * block.expansion, stride),
-                nn.BatchNorm2d(planes * block.expansion),
-            )
-
+            if shortcut_type == 'A':
+                downsample = partial(
+                    downsample_basic_3d_block,
+                    planes=planes * block.expansion,
+                    stride=stride)
+            else:
+                downsample = nn.Sequential(
+                    nn.Conv3d(
+                        self.inplanes,
+                        planes * block.expansion,
+                        kernel_size=1,
+                        stride=stride,
+                        bias=False), nn.BatchNorm3d(planes * block.expansion))
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
         self.inplanes = planes * block.expansion
@@ -372,10 +418,21 @@ class MultiModal(nn.Module):
     def _make_audio_layer(self, block, planes, blocks, shortcut_type, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                conv1x1(self.inplanes, planes * block.expansion, stride),
-                nn.BatchNorm1d(planes * block.expansion),
-            )
+            if shortcut_type == 'A':
+                downsample = partial(
+                    downsample_basic_1d_block,
+                    planes=planes * block.expansion,
+                    stride=stride)
+            else:
+                downsample = nn.Sequential(
+                    nn.Conv1d(
+                        self.inplanes,
+                        planes * block.expansion,
+                        kernel_size=1,
+                        stride=stride,
+                        bias=False), 
+                    nn.BatchNorm1d(planes * block.expansion),
+                )
 
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
@@ -398,7 +455,6 @@ class MultiModal(nn.Module):
 
         video_x = self.v_avgpool(video_x)
         video_x = video_x.view(video_x.size(0), -1)
-        print ("Video shape: {0}".format(video_x.size()))
 
         audio_x = self.a_conv1(audio_x)
         audio_x = self.a_bn1(audio_x)
@@ -412,10 +468,8 @@ class MultiModal(nn.Module):
 
         audio_x = self.a_avgpool(audio_x)
         audio_x = audio_x.view(audio_x.size(0), -1)
-        print ("Audio shape: {0}".format(audio_x.size()))
 
         x = torch.cat([video_x, audio_x], dim=1)
-        print ("Cat shape: {0}".format(x.size()))
 
         x = self.fc(x)
         return x
@@ -424,6 +478,9 @@ def simple10(**kwargs):
     model = MultiModal(Basic3DBlock, Basic1DBlock, [1,1,1,1], [1,1,1,1], **kwargs)
     return model
 
+def mmr18(**kwargs):
+    model = MultiModal(Basic3DResNetBlock, Basic1DResNetBlock, [2,2,2,2], [2,2,2,2], **kwargs)
+    return model
 
 def multimodal_rr_18(pretrained=False, **kwargs):
     """Constructs a MultiModal-18 model.

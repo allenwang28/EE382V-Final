@@ -13,7 +13,6 @@ from utils import load_value_file
 
 def librosa_loader(path, resample=22050, trunc=1.0):
     s, sr = librosa.core.load(path)
-    print ("Loading {0}, sr={1}".format(path, sr))
 
     if resample:
         s = librosa.core.resample(s, sr, resample)

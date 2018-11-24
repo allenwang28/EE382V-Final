@@ -11,10 +11,12 @@ def generate_model(opt):
     print ("Generating model")
 
     if opt.model == 'multimodal':
-        model = multimodal.simple10(
+
+        model = multimodal.mmr18(
                 num_classes=opt.n_classes,
                 shortcut_type=opt.resnet_shortcut,
                 sample_size=opt.sample_size,
+                video_pretrained=opt.visual_weights_path,
                 sample_duration=opt.sample_duration)
         """
         assert opt.model_depth in [10, 18, 34, 50, 101, 152, 200]
@@ -205,8 +207,6 @@ def generate_model(opt):
 
             parameters = get_fine_tuning_parameters(model, opt.ft_begin_index)
             return model, parameters
-        else:
-            print ("Not loading pretrained model")
     else:
         print ("Not cuda model")
         if opt.pretrain_path:

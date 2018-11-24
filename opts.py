@@ -75,6 +75,10 @@ def parse_opts():
         'Spatial cropping method in training. random is uniform. corner is selection from 4 corners and 1 center.  (random | corner | center)'
     )
     parser.add_argument(
+        '--visual_weights_path',
+        default=None,
+        help='Path to .pth file with weights for visual layers')
+    parser.add_argument(
         '--learning_rate',
         default=0.1,
         type=float,
