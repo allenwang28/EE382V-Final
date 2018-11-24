@@ -2,6 +2,7 @@ import torch
 import torch.utils.data as data
 from PIL import Image
 import os
+import numpy as np
 import math
 import functools
 import json
@@ -10,18 +11,26 @@ import librosa
 
 from utils import load_value_file
 
-def librosa_loader(path, resample=None, trunc=3.5):
+def librosa_loader(path, resample=22050, trunc=2.0):
     s, sr = librosa.core.load(path)
+    print ("Loading {0}, sr={1}".format(path, sr))
+
+    if resample:
+        print ("Resampling")
+        s = librosa.core.resample(s, sr, resample)
+        sr = resample
 
     # truncate the signal
     if trunc:
-        s = s[:int(sr*trunc)]
+        trunc = int(sr * trunc)
+        if len(s) >= trunc:
+            print ("Truncating")
+            s = s[:trunc]
+        else:
+            print ("Padding")
+            s = np.pad(s, (0, len(s) - trunc), 'constant')
 
-    # resample the signal
-    if resample:
-        return librosa.core.resample(s, sr, resample)
-    else:
-        return s 
+    return s.reshape(len(s), 1) 
 
 
 def pil_loader(path):
@@ -212,10 +221,12 @@ class UCF101(data.Dataset):
             self.spatial_transform.randomize_parameters()
             clip = [self.spatial_transform(img) for img in clip]
         clip = torch.stack(clip, 0).permute(1, 0, 2, 3)
-        audio = torch.FloatTensor(audio)
+
+        audio = torch.FloatTensor(audio).permute(1,0)
 
         target = self.data[index]
         if self.target_transform is not None:
+            print ("Target transform")
             target = self.target_transform(target)
 
         return clip, audio, target
