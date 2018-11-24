@@ -342,17 +342,8 @@ class MultiModal(nn.Module):
         self.a_layer4 = self._make_audio_layer(audio_block, 512, audio_layers[3], shortcut_type, stride=2)
         self.a_avgpool = nn.AdaptiveAvgPool1d(1)
 
-        # TODO - check this 
-
-
-        self.c_conv1 = nn.Conv1d(2, 64, kernel_size=2, stride=2, padding=3, bias=False)
-        self.c_bn1 = nn.BatchNorm1d(64)
-        self.c_relu = nn.ReLU(inplace=True)
-        self.c_maxpool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
-
-
         #self.fc = nn.Linear(512 * 5 * (visual_block.expansion + audio_block.expansion), num_classes)
-        self.fc = nn.Linear(512 * 5, num_classes)
+        self.fc = nn.Linear(512*(4*visual_block.expansion + audio_block.expansion), num_classes)
 
         # Initializations
         for m in self.modules():
@@ -407,6 +398,7 @@ class MultiModal(nn.Module):
 
         video_x = self.v_avgpool(video_x)
         video_x = video_x.view(video_x.size(0), -1)
+        print ("Video shape: {0}".format(video_x.size()))
 
         audio_x = self.a_conv1(audio_x)
         audio_x = self.a_bn1(audio_x)
@@ -420,8 +412,10 @@ class MultiModal(nn.Module):
 
         audio_x = self.a_avgpool(audio_x)
         audio_x = audio_x.view(audio_x.size(0), -1)
+        print ("Audio shape: {0}".format(audio_x.size()))
 
         x = torch.cat([video_x, audio_x], dim=1)
+        print ("Cat shape: {0}".format(x.size()))
 
         x = self.fc(x)
         return x

@@ -11,12 +11,11 @@ import librosa
 
 from utils import load_value_file
 
-def librosa_loader(path, resample=22050, trunc=2.0):
+def librosa_loader(path, resample=22050, trunc=1.0):
     s, sr = librosa.core.load(path)
     print ("Loading {0}, sr={1}".format(path, sr))
 
     if resample:
-        print ("Resampling")
         s = librosa.core.resample(s, sr, resample)
         sr = resample
 
@@ -24,10 +23,8 @@ def librosa_loader(path, resample=22050, trunc=2.0):
     if trunc:
         trunc = int(sr * trunc)
         if len(s) >= trunc:
-            print ("Truncating")
             s = s[:trunc]
         else:
-            print ("Padding")
             s = np.pad(s, (0, len(s) - trunc), 'constant')
 
     return s.reshape(len(s), 1) 
@@ -226,7 +223,6 @@ class UCF101(data.Dataset):
 
         target = self.data[index]
         if self.target_transform is not None:
-            print ("Target transform")
             target = self.target_transform(target)
 
         return clip, audio, target

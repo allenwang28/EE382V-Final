@@ -29,9 +29,6 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
 
         targets = Variable(targets)
         outputs = model(video_inputs, audio_inputs)
-        print ("Output size: {0}".format(outputs.size()))
-        print ("Target size: {0}".format(targets.size()))
-        print ("Target: {0}".format(targets))
         loss = criterion(outputs, targets)
         acc = calculate_accuracy(outputs, targets)
 
