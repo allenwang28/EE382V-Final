@@ -12,9 +12,10 @@ def generate_model(opt):
 
     if opt.model == 'multimodal':
 
-        model = multimodal.mmr18(
+        model = multimodal.mmr18_10(
                 num_classes=opt.n_classes,
-                shortcut_type=opt.resnet_shortcut,
+                v_shortcut_type=opt.resnet_shortcut,
+                a_shortcut_type='B',
                 sample_size=opt.sample_size,
                 video_pretrained=opt.visual_weights_path,
                 sample_duration=opt.sample_duration)

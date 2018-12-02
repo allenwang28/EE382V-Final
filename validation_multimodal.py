@@ -49,6 +49,10 @@ def val_epoch(epoch, data_loader, model, criterion, opt, logger):
                   loss=losses,
                   acc=accuracies))
 
+    # Clear validation data from CUDA
+    video_inputs = None
+    audio_inputs = None
+
     logger.log({'epoch': epoch, 'loss': losses.avg, 'acc': accuracies.avg})
 
     return losses.avg

@@ -309,7 +309,8 @@ class MultiModal(nn.Module):
                  audio_layers,
                  sample_size,
                  sample_duration,
-                 shortcut_type='B',
+                 v_shortcut_type='B',
+                 a_shortcut_type='B',
                  num_classes=101, 
                  video_pretrained=None):
         super(MultiModal, self).__init__()
@@ -326,13 +327,13 @@ class MultiModal(nn.Module):
         self.v_bn1 = nn.BatchNorm3d(64)
         self.v_relu = nn.ReLU(inplace=True)
         self.v_maxpool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=2, padding=1)
-        self.v_layer1 = self._make_visual_layer(visual_block, 64, visual_layers[0], shortcut_type)
+        self.v_layer1 = self._make_visual_layer(visual_block, 64, visual_layers[0], v_shortcut_type)
         self.v_layer2 = self._make_visual_layer(
-            visual_block, 128, visual_layers[1], shortcut_type, stride=2)
+            visual_block, 128, visual_layers[1], v_shortcut_type, stride=2)
         self.v_layer3 = self._make_visual_layer(
-            visual_block, 256, visual_layers[2], shortcut_type, stride=2)
+            visual_block, 256, visual_layers[2], v_shortcut_type, stride=2)
         self.v_layer4 = self._make_visual_layer(
-            visual_block, 512, visual_layers[3], shortcut_type, stride=2)
+            visual_block, 512, visual_layers[3], v_shortcut_type, stride=2)
         last_duration = int(math.ceil(sample_duration / 16))
         last_size = int(math.ceil(sample_size / 32))
         self.v_avgpool = nn.AvgPool3d(
@@ -349,10 +350,10 @@ class MultiModal(nn.Module):
         self.a_bn1 = nn.BatchNorm1d(64)
         self.a_relu = nn.ReLU(inplace=True)
         self.a_maxpool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
-        self.a_layer1 = self._make_audio_layer(audio_block, 64, audio_layers[0], shortcut_type)
-        self.a_layer2 = self._make_audio_layer(audio_block, 128, audio_layers[1], shortcut_type, stride=2)
-        self.a_layer3 = self._make_audio_layer(audio_block, 256, audio_layers[2], shortcut_type, stride=2)
-        self.a_layer4 = self._make_audio_layer(audio_block, 512, audio_layers[3], shortcut_type, stride=2)
+        self.a_layer1 = self._make_audio_layer(audio_block, 64, audio_layers[0], a_shortcut_type)
+        self.a_layer2 = self._make_audio_layer(audio_block, 128, audio_layers[1], a_shortcut_type, stride=2)
+        self.a_layer3 = self._make_audio_layer(audio_block, 256, audio_layers[2], a_shortcut_type, stride=2)
+        self.a_layer4 = self._make_audio_layer(audio_block, 512, audio_layers[3], a_shortcut_type, stride=2)
         self.a_avgpool = nn.AdaptiveAvgPool1d(1)
 
         #self.fc = nn.Linear(512 * 5 * (visual_block.expansion + audio_block.expansion), num_classes)
@@ -478,8 +479,8 @@ def simple10(**kwargs):
     model = MultiModal(Basic3DBlock, Basic1DBlock, [1,1,1,1], [1,1,1,1], **kwargs)
     return model
 
-def mmr18(**kwargs):
-    model = MultiModal(Basic3DResNetBlock, Basic1DResNetBlock, [2,2,2,2], [2,2,2,2], **kwargs)
+def mmr18_10(**kwargs):
+    model = MultiModal(Basic3DResNetBlock, Basic1DResNetBlock, [2,2,2,2], [1,1,1,1], **kwargs)
     return model
 
 def multimodal_rr_18(pretrained=False, **kwargs):
