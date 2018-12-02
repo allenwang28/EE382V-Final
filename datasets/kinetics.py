@@ -6,8 +6,26 @@ import math
 import functools
 import json
 import copy
+import librosa
 
 from utils import load_value_file
+
+def librosa_loader(path, resample=22050, trunc=1.0):
+    s, sr = librosa.core.load(path)
+
+    if resample:
+        s = librosa.core.resample(s, sr, resample)
+        sr = resample
+
+    # truncate the signal
+    if trunc:
+        trunc = int(sr * trunc)
+        if len(s) >= trunc:
+            s = s[:trunc]
+        else:
+            s = np.pad(s, (0, len(s) - trunc), 'constant')
+
+    return s.reshape(len(s), 1) 
 
 
 def pil_loader(path):
@@ -33,22 +51,29 @@ def get_default_image_loader():
     else:
         return pil_loader
 
+def get_default_audio_loader():
+    return librosa_loader
 
-def video_loader(video_dir_path, frame_indices, image_loader):
-    video = []
+def video_loader(video_dir_path, frame_indices, image_loader, audio_loader):
+    imgs = []
+    audio_path = os.path.join(video_dir_path, os.path.basename(video_dir_path + '.wav'))
+    audio = audio_loader(audio_path)
+
     for i in frame_indices:
         image_path = os.path.join(video_dir_path, 'image_{:05d}.jpg'.format(i))
-        if os.path.exists(image_path):
-            video.append(image_loader(image_path))
-        else:
-            return video
 
-    return video
+        if os.path.exists(image_path):
+            imgs.append(image_loader(image_path))
+        else:
+            return imgs, audio
+
+    return imgs, audio 
 
 
 def get_default_video_loader():
     image_loader = get_default_image_loader()
-    return functools.partial(video_loader, image_loader=image_loader)
+    audio_loader = get_default_audio_loader()
+    return functools.partial(video_loader, image_loader=image_loader, audio_loader=audio_loader)
 
 
 def load_annotation_data(data_file_path):
@@ -98,6 +123,10 @@ def make_dataset(root_path, annotation_path, subset, n_samples_for_each_video,
 
         video_path = os.path.join(root_path, video_names[i])
         if not os.path.exists(video_path):
+            continue
+
+        audio_path = os.path.join(video_path, os.path.basename(video_path + '.wav'))
+        if not os.path.exists(audio_path):
             continue
 
         n_frames_file_path = os.path.join(video_path, 'n_frames')
@@ -185,17 +214,19 @@ class Kinetics(data.Dataset):
         frame_indices = self.data[index]['frame_indices']
         if self.temporal_transform is not None:
             frame_indices = self.temporal_transform(frame_indices)
-        clip = self.loader(path, frame_indices)
+        clip, audio = self.loader(path, frame_indices)
         if self.spatial_transform is not None:
             self.spatial_transform.randomize_parameters()
             clip = [self.spatial_transform(img) for img in clip]
         clip = torch.stack(clip, 0).permute(1, 0, 2, 3)
 
+        audio = torch.FloatTensor(audio).permute(1,0)
+
         target = self.data[index]
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return clip, target
+        return clip, audio, target
 
     def __len__(self):
         return len(self.data)
